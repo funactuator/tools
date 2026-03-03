@@ -3,7 +3,7 @@ set -euo pipefail
 
 ACTIVE_FILE="$HOME/.aws/active-profile"
 AWS_CONFIG="$HOME/.aws/config"
-VERSION="1.4.0"
+VERSION="1.4.1"
 SCRIPT_URL="https://raw.githubusercontent.com/funactuator/tools/main/iaws/iaws"
 SETUP_DOC="https://github.com/funactuator/tools/blob/main/iaws/AWS-SETUP.md"
 
