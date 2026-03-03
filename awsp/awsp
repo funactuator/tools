@@ -3,7 +3,7 @@ set -euo pipefail
 
 ACTIVE_FILE="$HOME/.aws/active-profile"
 AWS_CONFIG="$HOME/.aws/config"
-VERSION="1.1.0"
+VERSION="1.2.0"
 SCRIPT_URL="https://raw.githubusercontent.com/funactuator/tools/main/awsp/awsp"
 
 # --- Colors (disabled if not a terminal) ---
@@ -230,6 +230,44 @@ cmd_upgrade() {
   warn "Restart your terminal or run: source ~/.zshrc"
 }
 
+cmd_uninstall() {
+  local script_path="$HOME/.aws/awsp"
+  local shell_rc
+
+  if [[ -n "${ZSH_VERSION:-}" ]] || [[ "$SHELL" == */zsh ]]; then
+    shell_rc="$HOME/.zshrc"
+  else
+    shell_rc="$HOME/.bashrc"
+  fi
+
+  # Confirm
+  printf "${YELLOW}This will remove awsp from %s and clean up %s${RESET}\n" "$script_path" "$shell_rc" >&2
+  read -r -p "Are you sure? [y/N] " confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    warn "Aborted."
+    return 0
+  fi
+
+  # Remove shell config block
+  local marker="# awsp - AWS Profile Manager"
+  if grep -qF "$marker" "$shell_rc" 2>/dev/null; then
+    # Remove from marker line through closing brace of awsp function + blank line after
+    perl -i -0pe "s/\n${marker}\nexport PATH=.*?\n.*?awsp\(\).*?\{.*?\}\n//s" "$shell_rc" 2>/dev/null \
+      || sed -i '' "/# awsp - AWS Profile Manager/,/^}/d" "$shell_rc"
+    info "Removed awsp config from $shell_rc"
+  fi
+
+  # Remove active-profile state file
+  rm -f "$HOME/.aws/active-profile"
+
+  # Remove script itself (last step)
+  rm -f "$script_path"
+  info "Removed $script_path"
+
+  echo
+  warn "awsp uninstalled. Restart your terminal or run: source $shell_rc"
+}
+
 cmd_install() {
   local script_path="$HOME/.aws/awsp"
   local shell_rc
@@ -297,6 +335,7 @@ cmd_help() {
   printf "    load            Load credentials into current shell ${DIM}(requires install)${RESET}\n" >&2
   printf "    env             Print credential export statements\n" >&2
   printf "    upgrade         Upgrade awsp to latest version from GitHub\n" >&2
+  printf "    uninstall       Remove awsp and clean up shell config\n" >&2
   printf "    install         Set up shell config (PATH + shell function)\n" >&2
   printf "    help            Show this help\n\n" >&2
   printf "  ${BOLD}EXAMPLES${RESET}\n" >&2
@@ -317,6 +356,7 @@ case "${1:-status}" in
   env)              cmd_env ;;
   load)             cmd_load ;;
   upgrade|update)   cmd_upgrade ;;
+  uninstall|remove) cmd_uninstall ;;
   install)          cmd_install ;;
   help|-h|--help)   cmd_help ;;
   version|--version|-v) echo "awsp v${VERSION}" ;;
