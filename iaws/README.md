@@ -1,24 +1,24 @@
-# awsp - AWS Profile Manager
+# iaws - AWS Profile Manager
 
 A simple, portable CLI tool for managing AWS profiles with SSO support. Built for teams using AWS SSO with multiple environments (dev, uat, prod, etc.).
 
 ## Install
 
 ```bash
-curl -sL https://raw.githubusercontent.com/funactuator/tools/main/awsp/awsp -o ~/.aws/awsp && chmod +x ~/.aws/awsp && ~/.aws/awsp install
+curl -sL https://raw.githubusercontent.com/funactuator/tools/main/iaws/iaws -o ~/.aws/iaws && chmod +x ~/.aws/iaws && ~/.aws/iaws install
 ```
 
 Restart your terminal (or `source ~/.zshrc`) after install.
 
 > **Tip:** Inspect the script before running it:
 > ```bash
-> curl -sL https://raw.githubusercontent.com/funactuator/tools/main/awsp/awsp | cat
+> curl -sL https://raw.githubusercontent.com/funactuator/tools/main/iaws/iaws | cat
 > ```
 
 ## Usage
 
 ```
-awsp <command>
+iaws <command>
 
   list    | ls        List all profiles (active one highlighted)
   use     | set       Switch active profile (interactive picker or pass name)
@@ -26,8 +26,8 @@ awsp <command>
   login               Force SSO login for active profile
   load                Load credentials into current shell session
   env                 Print credential export statements
-  upgrade | update    Upgrade awsp to latest version from GitHub
-  uninstall | remove  Remove awsp and clean up shell config
+  upgrade | update    Upgrade iaws to latest version from GitHub
+  uninstall | remove  Remove iaws and clean up shell config
   install             Set up PATH + shell function in shell config
   help                Show usage
 ```
@@ -35,14 +35,14 @@ awsp <command>
 ## Examples
 
 ```bash
-awsp use                   # Interactive profile picker (fzf or numbered menu)
-awsp use irame-app-dev     # Set profile directly
-awsp status                # See what profile is active and if SSO is valid
-awsp list                  # See all profiles with account & role info
-awsp login                 # Trigger SSO login
-awsp load                  # Load credentials into current shell session
-awsp upgrade               # Upgrade to latest version
-awsp uninstall             # Remove awsp completely
+iaws use                   # Interactive profile picker (fzf or numbered menu)
+iaws use irame-app-dev     # Set profile directly
+iaws status                # See what profile is active and if SSO is valid
+iaws list                  # See all profiles with account & role info
+iaws login                 # Trigger SSO login
+iaws load                  # Load credentials into current shell session
+iaws upgrade               # Upgrade to latest version
+iaws uninstall             # Remove iaws completely
 ```
 
 ## How it works
@@ -52,14 +52,14 @@ awsp uninstall             # Remove awsp completely
 - Uses `aws configure export-credentials` under the hood
 - Auto-triggers `aws sso login` if your session has expired
 - Uses `fzf` for interactive selection if available, falls back to a numbered menu
-- `awsp load` works via a shell function installed in your rc file — this is how it can export credentials into your current shell session
+- `iaws load` works via a shell function installed in your rc file — this is how it can export credentials into your current shell session
 
 ## Upgrade
 
 ```bash
-awsp upgrade
+iaws upgrade
 # or
-awsp update
+iaws update
 ```
 
 Downloads the latest version from GitHub, validates it, and replaces the existing script. Shows a version diff before updating.
@@ -67,9 +67,9 @@ Downloads the latest version from GitHub, validates it, and replaces the existin
 ## Uninstall
 
 ```bash
-awsp uninstall
+iaws uninstall
 # or
-awsp remove
+iaws remove
 ```
 
 Asks for confirmation, then removes the script, cleans up your shell config, and deletes the active profile state file.
