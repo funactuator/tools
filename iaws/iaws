@@ -19,7 +19,23 @@ warn()  { printf "${YELLOW}%s${RESET}\n" "$*" >&2; }
 err()   { printf "${RED}%s${RESET}\n" "$*" >&2; }
 
 # --- Helpers ---
-get_profiles() { aws configure list-profiles 2>/dev/null; }
+get_profiles() {
+  if [[ -r "$AWS_CONFIG" ]]; then
+    awk '/^\[profile / { print substr($0, 10, length($0)-10) }' "$AWS_CONFIG"
+  else
+    aws configure list-profiles 2>/dev/null
+  fi
+}
+
+parse_profile_field() {
+  local profile="$1" field="$2"
+  awk -v prof="$profile" -v key="$field" '
+    /^\[profile / { cur = substr($0, 10, length($0)-10) }
+    cur == prof && $0 ~ "^"key" *= *" {
+      sub(/^[^=]+=[ \t]*/, ""); print; exit
+    }
+  ' "$AWS_CONFIG"
+}
 
 get_active() {
   if [[ -f "$ACTIVE_FILE" ]]; then
@@ -65,8 +81,10 @@ cmd_list() {
 
   while IFS= read -r p; do
     local acct role marker color
-    acct=$(aws configure get sso_account_id --profile "$p" 2>/dev/null || echo "-")
-    role=$(aws configure get sso_role_name --profile "$p" 2>/dev/null || echo "-")
+    acct=$(parse_profile_field "$p" "sso_account_id")
+    role=$(parse_profile_field "$p" "sso_role_name")
+    [[ -z "$acct" ]] && acct="-"
+    [[ -z "$role" ]] && role="-"
 
     if [[ "$p" == "$active" ]]; then
       marker=">"
@@ -136,9 +154,12 @@ cmd_status() {
   p="$(require_active)"
 
   local region acct role sso_state sso_color
-  region=$(aws configure get region --profile "$p" 2>/dev/null || echo "not set")
-  acct=$(aws configure get sso_account_id --profile "$p" 2>/dev/null || echo "-")
-  role=$(aws configure get sso_role_name --profile "$p" 2>/dev/null || echo "-")
+  region=$(parse_profile_field "$p" "region")
+  acct=$(parse_profile_field "$p" "sso_account_id")
+  role=$(parse_profile_field "$p" "sso_role_name")
+  [[ -z "$region" ]] && region="not set"
+  [[ -z "$acct" ]] && acct="-"
+  [[ -z "$role" ]] && role="-"
 
   if is_logged_in "$p"; then
     sso_state="valid"
@@ -186,7 +207,8 @@ cmd_env() {
 
   echo "$creds"
   local region
-  region="$(aws configure get region --profile "$p" 2>/dev/null || echo "ap-south-1")"
+  region="$(parse_profile_field "$p" "region")"
+  [[ -z "$region" ]] && region="ap-south-1"
   echo "export AWS_REGION=\"$region\""
   echo "export AWS_DEFAULT_REGION=\"$region\""
   echo "export AWS_PROFILE=\"$p\""
