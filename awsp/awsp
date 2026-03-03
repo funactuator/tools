@@ -3,7 +3,7 @@ set -euo pipefail
 
 ACTIVE_FILE="$HOME/.aws/active-profile"
 AWS_CONFIG="$HOME/.aws/config"
-VERSION="1.2.0"
+VERSION="1.3.0"
 SCRIPT_URL="https://raw.githubusercontent.com/funactuator/tools/main/awsp/awsp"
 
 # --- Colors (disabled if not a terminal) ---
@@ -288,10 +288,10 @@ cmd_install() {
   fi
   chmod +x "$script_path"
 
-  # Add shell config (idempotent)
+  # Shell config block to inject
   local marker="# awsp - AWS Profile Manager"
-  if ! grep -qF "$marker" "$shell_rc" 2>/dev/null; then
-    cat >> "$shell_rc" <<'SHELLCONFIG'
+  local new_block
+  new_block="$(cat <<'SHELLCONFIG'
 
 # awsp - AWS Profile Manager
 export PATH="$HOME/.aws:$PATH"
@@ -303,9 +303,18 @@ awsp() {
   fi
 }
 SHELLCONFIG
+)"
+
+  if ! grep -qF "$marker" "$shell_rc" 2>/dev/null; then
+    # Fresh install
+    echo "$new_block" >> "$shell_rc"
     info "Added awsp to $shell_rc"
   else
-    info "Shell config already set up in $shell_rc"
+    # Already installed - replace existing block with latest
+    # Works for both old alias style and new function style
+    perl -i -0pe "s|\n# awsp - AWS Profile Manager\n.*?(?=\n\n|\n#|\z)|${new_block}|s" "$shell_rc" 2>/dev/null \
+      || { warn "Could not auto-update $shell_rc block. Please re-run: awsp uninstall && awsp install"; }
+    info "Updated awsp config in $shell_rc"
   fi
 
   echo
