@@ -164,6 +164,14 @@ cmd_login() {
   info "SSO login successful."
 }
 
+cmd_load() {
+  # This command only works when awsp is a shell function (installed via awsp install)
+  # If called directly as a script, it cannot export to the parent shell
+  err "'awsp load' only works after running: awsp install"
+  err "Then restart your terminal and run: awsp load"
+  exit 1
+}
+
 cmd_env() {
   local p
   p="$(require_active)"
@@ -206,12 +214,18 @@ cmd_install() {
   # Add shell config (idempotent)
   local marker="# awsp - AWS Profile Manager"
   if ! grep -qF "$marker" "$shell_rc" 2>/dev/null; then
-    {
-      echo ""
-      echo "$marker"
-      echo 'export PATH="$HOME/.aws:$PATH"'
-      echo 'alias awsenv='"'"'eval "$(awsp env)"'"'"
-    } >> "$shell_rc"
+    cat >> "$shell_rc" <<'SHELLCONFIG'
+
+# awsp - AWS Profile Manager
+export PATH="$HOME/.aws:$PATH"
+awsp() {
+  if [[ "${1:-}" == "load" ]]; then
+    eval "$(~/.aws/awsp env)"
+  else
+    ~/.aws/awsp "$@"
+  fi
+}
+SHELLCONFIG
     info "Added awsp to $shell_rc"
   else
     info "Shell config already set up in $shell_rc"
@@ -227,7 +241,7 @@ cmd_install() {
   printf "    ${CYAN}awsp use${RESET}       Select a profile\n"
   printf "    ${CYAN}awsp status${RESET}    Check current profile & SSO state\n"
   printf "    ${CYAN}awsp list${RESET}      List all profiles\n"
-  printf "    ${CYAN}awsenv${RESET}         Load credentials into shell\n"
+  printf "    ${CYAN}awsp load${RESET}      Load credentials into current shell\n"
   echo
 }
 
@@ -241,14 +255,15 @@ cmd_help() {
   printf "    use,    set     Switch active profile (interactive if no arg)\n" >&2
   printf "    status, st      Show current profile & SSO state ${DIM}(default)${RESET}\n" >&2
   printf "    login           Force SSO login for active profile\n" >&2
-  printf "    env             Export credentials ${DIM}(use: eval \"\$(awsp env)\" or alias: awsenv)${RESET}\n" >&2
-  printf "    install         Set up shell config (PATH + alias)\n" >&2
+  printf "    load            Load credentials into current shell ${DIM}(requires install)${RESET}\n" >&2
+  printf "    env             Print credential export statements\n" >&2
+  printf "    install         Set up shell config (PATH + shell function)\n" >&2
   printf "    help            Show this help\n\n" >&2
   printf "  ${BOLD}EXAMPLES${RESET}\n" >&2
   printf "    ${CYAN}awsp use${RESET}                  # Interactive profile picker\n" >&2
   printf "    ${CYAN}awsp use my-profile${RESET}       # Set profile directly\n" >&2
   printf "    ${CYAN}awsp status${RESET}               # Check what's active\n" >&2
-  printf "    ${CYAN}awsenv${RESET}                    # Load credentials into shell\n\n" >&2
+  printf "    ${CYAN}awsp load${RESET}                 # Load credentials into current shell\n\n" >&2
   printf "  ${BOLD}INSTALL${RESET}\n" >&2
   printf "    curl -sL <url> -o ~/.aws/awsp && chmod +x ~/.aws/awsp && ~/.aws/awsp install\n\n" >&2
 }
@@ -260,6 +275,7 @@ case "${1:-status}" in
   status|st)        cmd_status ;;
   login)            cmd_login ;;
   env)              cmd_env ;;
+  load)             cmd_load ;;
   install)          cmd_install ;;
   help|-h|--help)   cmd_help ;;
   version|--version|-v) echo "awsp v${VERSION}" ;;
