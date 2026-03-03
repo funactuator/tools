@@ -3,7 +3,7 @@ set -euo pipefail
 
 ACTIVE_FILE="$HOME/.aws/active-profile"
 AWS_CONFIG="$HOME/.aws/config"
-VERSION="1.3.2"
+VERSION="1.4.0"
 SCRIPT_URL="https://raw.githubusercontent.com/funactuator/tools/main/iaws/iaws"
 
 # --- Colors (disabled if not a terminal) ---
