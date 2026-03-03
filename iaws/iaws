@@ -5,6 +5,7 @@ ACTIVE_FILE="$HOME/.aws/active-profile"
 AWS_CONFIG="$HOME/.aws/config"
 VERSION="1.4.0"
 SCRIPT_URL="https://raw.githubusercontent.com/funactuator/tools/main/iaws/iaws"
+SETUP_DOC="https://github.com/funactuator/tools/blob/main/iaws/AWS-SETUP.md"
 
 # --- Colors (disabled if not a terminal) ---
 if [[ -t 2 ]]; then
@@ -17,6 +18,32 @@ fi
 info()  { printf "${GREEN}%s${RESET}\n" "$*" >&2; }
 warn()  { printf "${YELLOW}%s${RESET}\n" "$*" >&2; }
 err()   { printf "${RED}%s${RESET}\n" "$*" >&2; }
+
+# --- Prereq checks ---
+check_prereqs() {
+  local ok=1
+
+  if ! command -v aws &>/dev/null; then
+    err "AWS CLI not found. Please install AWS CLI v2."
+    ok=0
+  elif ! aws --version 2>&1 | grep -q 'aws-cli/2'; then
+    err "AWS CLI v1 detected. iaws requires AWS CLI v2."
+    ok=0
+  fi
+
+  if [[ ! -f "$AWS_CONFIG" ]]; then
+    err "~/.aws/config not found. You need at least one SSO profile configured."
+    ok=0
+  elif ! grep -q '^\[profile ' "$AWS_CONFIG" 2>/dev/null; then
+    err "No profiles found in ~/.aws/config. Add at least one [profile ...] block."
+    ok=0
+  fi
+
+  if [[ "$ok" -eq 0 ]]; then
+    printf "${YELLOW}  Setup guide: %s${RESET}\n" "$SETUP_DOC" >&2
+    exit 1
+  fi
+}
 
 # --- Helpers ---
 get_profiles() {
@@ -67,6 +94,7 @@ require_active() {
 # --- Commands ---
 
 cmd_list() {
+  check_prereqs
   local active profiles
   active="$(get_active)"
   profiles="$(get_profiles)"
@@ -100,6 +128,7 @@ cmd_list() {
 }
 
 cmd_use() {
+  check_prereqs
   local choice
 
   if [[ $# -ge 1 ]]; then
@@ -150,6 +179,7 @@ cmd_use() {
 }
 
 cmd_status() {
+  check_prereqs
   local p
   p="$(require_active)"
 
@@ -179,6 +209,7 @@ cmd_status() {
 }
 
 cmd_login() {
+  check_prereqs
   local p
   p="$(require_active)"
   info "Logging in to SSO for profile: $p"
@@ -195,6 +226,7 @@ cmd_load() {
 }
 
 cmd_env() {
+  check_prereqs
   local p
   p="$(require_active)"
 
