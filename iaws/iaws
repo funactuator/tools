@@ -3,7 +3,7 @@ set -euo pipefail
 
 ACTIVE_FILE="$HOME/.aws/active-profile"
 AWS_CONFIG="$HOME/.aws/config"
-VERSION="1.4.1"
+VERSION="1.5.0"
 SCRIPT_URL="https://raw.githubusercontent.com/funactuator/tools/main/iaws/iaws"
 SETUP_DOC="https://github.com/funactuator/tools/blob/main/iaws/AWS-SETUP.md"
 
@@ -86,6 +86,12 @@ require_active() {
   p="$(get_active)"
   if [[ -z "$p" ]]; then
     err "No active profile. Run: iaws use"
+    exit 1
+  fi
+  if ! profile_exists "$p"; then
+    err "Active profile '$p' no longer exists in ~/.aws/config."
+    err "Run: iaws use"
+    rm -f "$ACTIVE_FILE"
     exit 1
   fi
   echo "$p"
@@ -181,7 +187,20 @@ cmd_use() {
 cmd_status() {
   check_prereqs
   local p
-  p="$(require_active)"
+  p="$(get_active)"
+
+  if [[ -z "$p" ]]; then
+    warn "No active profile set."
+    info "Run: iaws use"
+    return 0
+  fi
+
+  if ! profile_exists "$p"; then
+    err "Active profile '$p' no longer exists in ~/.aws/config."
+    info "Run: iaws use"
+    rm -f "$ACTIVE_FILE"
+    return 1
+  fi
 
   local region acct role sso_state sso_color
   region=$(parse_profile_field "$p" "region")
@@ -211,7 +230,15 @@ cmd_status() {
 cmd_login() {
   check_prereqs
   local p
-  p="$(require_active)"
+  if [[ $# -ge 1 ]]; then
+    p="$1"
+    if ! profile_exists "$p"; then
+      err "Profile '$p' not found."
+      exit 1
+    fi
+  else
+    p="$(require_active)"
+  fi
   info "Logging in to SSO for profile: $p"
   aws sso login --profile "$p"
   info "SSO login successful."
@@ -228,7 +255,16 @@ cmd_load() {
 cmd_env() {
   check_prereqs
   local p
-  p="$(require_active)"
+  if [[ $# -ge 1 ]]; then
+    p="$1"
+    if ! profile_exists "$p"; then
+      err "Profile '$p' not found."
+      exit 1
+    fi
+    set_active "$p"
+  else
+    p="$(require_active)"
+  fi
 
   local creds
   if ! creds="$(aws configure export-credentials --profile "$p" --format env 2>/dev/null)"; then
@@ -244,6 +280,51 @@ cmd_env() {
   echo "export AWS_REGION=\"$region\""
   echo "export AWS_DEFAULT_REGION=\"$region\""
   echo "export AWS_PROFILE=\"$p\""
+}
+
+cmd_whoami() {
+  check_prereqs
+  local p
+  p="$(require_active)"
+  aws sts get-caller-identity --profile "$p" --output table 2>/dev/null \
+    || { err "Not logged in. Run: iaws login"; exit 1; }
+}
+
+cmd_completions() {
+  cat <<'COMP'
+_iaws() {
+  local cmds=(
+    'list:List all available profiles'
+    'ls:List all available profiles'
+    'use:Switch active profile'
+    'set:Switch active profile'
+    'status:Show current profile & SSO state'
+    'st:Show current profile & SSO state'
+    'login:Force SSO login'
+    'load:Load credentials into current shell'
+    'env:Print credential export statements'
+    'whoami:Show current STS caller identity'
+    'upgrade:Upgrade iaws to latest version'
+    'update:Upgrade iaws to latest version'
+    'uninstall:Remove iaws and clean up shell config'
+    'remove:Remove iaws and clean up shell config'
+    'install:Set up shell config'
+    'help:Show help'
+    'version:Show version'
+  )
+  if (( CURRENT == 2 )); then
+    _describe 'command' cmds
+  elif (( CURRENT == 3 )); then
+    case "${words[2]}" in
+      use|set|login|load)
+        local profiles=($(~/.aws/iaws _profiles 2>/dev/null))
+        _describe 'profile' profiles
+        ;;
+    esac
+  fi
+}
+compdef _iaws iaws
+COMP
 }
 
 cmd_upgrade() {
@@ -350,11 +431,13 @@ cmd_install() {
 export PATH="$HOME/.aws:$PATH"
 iaws() {
   if [[ "${1:-}" == "load" ]]; then
-    eval "$(~/.aws/iaws env)"
+    shift
+    eval "$(~/.aws/iaws env "$@")"
   else
     ~/.aws/iaws "$@"
   fi
 }
+source <(~/.aws/iaws completions 2>/dev/null)
 SHELLCONFIG
 )"
 
@@ -398,18 +481,22 @@ cmd_help() {
   printf "    list,   ls      List all available profiles\n" >&2
   printf "    use,    set     Switch active profile (interactive if no arg)\n" >&2
   printf "    status, st      Show current profile & SSO state ${DIM}(default)${RESET}\n" >&2
-  printf "    login           Force SSO login for active profile\n" >&2
-  printf "    load            Load credentials into current shell ${DIM}(requires install)${RESET}\n" >&2
-  printf "    env             Print credential export statements\n" >&2
+  printf "    login   [prof]  Force SSO login (active profile or specified)\n" >&2
+  printf "    load    [prof]  Load credentials into current shell ${DIM}(requires install)${RESET}\n" >&2
+  printf "    env     [prof]  Print credential export statements\n" >&2
+  printf "    whoami          Show current STS caller identity\n" >&2
   printf "    upgrade         Upgrade iaws to latest version from GitHub\n" >&2
   printf "    uninstall       Remove iaws and clean up shell config\n" >&2
-  printf "    install         Set up shell config (PATH + shell function)\n" >&2
+  printf "    install         Set up shell config (PATH + shell function + completions)\n" >&2
+  printf "    completions     Output shell completion script\n" >&2
   printf "    help            Show this help\n\n" >&2
   printf "  ${BOLD}EXAMPLES${RESET}\n" >&2
   printf "    ${CYAN}iaws use${RESET}                  # Interactive profile picker\n" >&2
   printf "    ${CYAN}iaws use my-profile${RESET}       # Set profile directly\n" >&2
   printf "    ${CYAN}iaws status${RESET}               # Check what's active\n" >&2
-  printf "    ${CYAN}iaws load${RESET}                 # Load credentials into current shell\n\n" >&2
+  printf "    ${CYAN}iaws login my-profile${RESET}     # SSO login for specific profile\n" >&2
+  printf "    ${CYAN}iaws load my-profile${RESET}      # Load creds for specific profile\n" >&2
+  printf "    ${CYAN}iaws whoami${RESET}               # Verify your AWS identity\n\n" >&2
   printf "  ${BOLD}INSTALL${RESET}\n" >&2
   printf "    curl -sL <url> -o ~/.aws/iaws && chmod +x ~/.aws/iaws && ~/.aws/iaws install\n\n" >&2
 }
@@ -419,12 +506,15 @@ case "${1:-status}" in
   list|ls)          cmd_list ;;
   use|set)          shift; cmd_use "$@" ;;
   status|st)        cmd_status ;;
-  login)            cmd_login ;;
-  env)              cmd_env ;;
+  login)            shift; cmd_login "$@" ;;
+  env)              shift; cmd_env "$@" ;;
   load)             cmd_load ;;
   upgrade|update)   cmd_upgrade ;;
   uninstall|remove) cmd_uninstall ;;
   install)          cmd_install ;;
+  completions)      cmd_completions ;;
+  whoami)           cmd_whoami ;;
+  _profiles)        get_profiles ;;
   help|-h|--help)   cmd_help ;;
   version|--version|-v) echo "iaws v${VERSION}" ;;
   *)                err "Unknown command: $1"; cmd_help; exit 1 ;;
