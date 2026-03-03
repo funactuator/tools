@@ -3,7 +3,8 @@ set -euo pipefail
 
 ACTIVE_FILE="$HOME/.aws/active-profile"
 AWS_CONFIG="$HOME/.aws/config"
-VERSION="1.0.0"
+VERSION="1.1.0"
+SCRIPT_URL="https://raw.githubusercontent.com/funactuator/tools/main/awsp/awsp"
 
 # --- Colors (disabled if not a terminal) ---
 if [[ -t 2 ]]; then
@@ -191,6 +192,44 @@ cmd_env() {
   echo "export AWS_PROFILE=\"$p\""
 }
 
+cmd_upgrade() {
+  local script_path="$HOME/.aws/awsp"
+
+  info "Checking for updates..."
+
+  local tmp
+  tmp="$(mktemp)"
+
+  if ! curl -sL "$SCRIPT_URL" -o "$tmp" 2>/dev/null; then
+    err "Failed to download latest version. Check your internet connection."
+    rm -f "$tmp"
+    exit 1
+  fi
+
+  # Check if downloaded file looks valid
+  if ! grep -q "awsp - AWS Profile Manager" "$tmp" 2>/dev/null; then
+    err "Downloaded file looks invalid. Aborting upgrade."
+    rm -f "$tmp"
+    exit 1
+  fi
+
+  local latest_version
+  latest_version=$(grep '^VERSION=' "$tmp" | cut -d'"' -f2)
+
+  if [[ "$latest_version" == "$VERSION" ]]; then
+    info "Already on latest version (v$VERSION). Nothing to do."
+    rm -f "$tmp"
+    return 0
+  fi
+
+  cp "$tmp" "$script_path"
+  chmod +x "$script_path"
+  rm -f "$tmp"
+
+  info "Upgraded: v$VERSION → v$latest_version"
+  warn "Restart your terminal or run: source ~/.zshrc"
+}
+
 cmd_install() {
   local script_path="$HOME/.aws/awsp"
   local shell_rc
@@ -257,6 +296,7 @@ cmd_help() {
   printf "    login           Force SSO login for active profile\n" >&2
   printf "    load            Load credentials into current shell ${DIM}(requires install)${RESET}\n" >&2
   printf "    env             Print credential export statements\n" >&2
+  printf "    upgrade         Upgrade awsp to latest version from GitHub\n" >&2
   printf "    install         Set up shell config (PATH + shell function)\n" >&2
   printf "    help            Show this help\n\n" >&2
   printf "  ${BOLD}EXAMPLES${RESET}\n" >&2
@@ -276,6 +316,7 @@ case "${1:-status}" in
   login)            cmd_login ;;
   env)              cmd_env ;;
   load)             cmd_load ;;
+  upgrade|update)   cmd_upgrade ;;
   install)          cmd_install ;;
   help|-h|--help)   cmd_help ;;
   version|--version|-v) echo "awsp v${VERSION}" ;;
