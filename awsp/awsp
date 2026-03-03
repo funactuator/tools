@@ -232,32 +232,25 @@ cmd_install() {
 }
 
 cmd_help() {
-  cat >&2 <<EOF
-
-  ${BOLD}awsp${RESET} - AWS Profile Manager v${VERSION}
-
-  ${BOLD}USAGE${RESET}
-    awsp <command> [args]
-
-  ${BOLD}COMMANDS${RESET}
-    list,   ls      List all available profiles
-    use,    set     Switch active profile (interactive if no arg)
-    status, st      Show current profile & SSO state ${DIM}(default)${RESET}
-    login           Force SSO login for active profile
-    env             Export credentials ${DIM}(use: eval "\$(awsp env)" or alias: awsenv)${RESET}
-    install         Set up shell config (PATH + alias)
-    help            Show this help
-
-  ${BOLD}EXAMPLES${RESET}
-    awsp use                  # Interactive profile picker
-    awsp use my-profile       # Set profile directly
-    awsp status               # Check what's active
-    awsenv                    # Load credentials into shell
-
-  ${BOLD}INSTALL${RESET}
-    curl -sL <url> -o ~/.aws/awsp && chmod +x ~/.aws/awsp && ~/.aws/awsp install
-
-EOF
+  printf "\n" >&2
+  printf "  ${BOLD}awsp${RESET} - AWS Profile Manager v%s\n\n" "$VERSION" >&2
+  printf "  ${BOLD}USAGE${RESET}\n" >&2
+  printf "    awsp <command> [args]\n\n" >&2
+  printf "  ${BOLD}COMMANDS${RESET}\n" >&2
+  printf "    list,   ls      List all available profiles\n" >&2
+  printf "    use,    set     Switch active profile (interactive if no arg)\n" >&2
+  printf "    status, st      Show current profile & SSO state ${DIM}(default)${RESET}\n" >&2
+  printf "    login           Force SSO login for active profile\n" >&2
+  printf "    env             Export credentials ${DIM}(use: eval \"\$(awsp env)\" or alias: awsenv)${RESET}\n" >&2
+  printf "    install         Set up shell config (PATH + alias)\n" >&2
+  printf "    help            Show this help\n\n" >&2
+  printf "  ${BOLD}EXAMPLES${RESET}\n" >&2
+  printf "    ${CYAN}awsp use${RESET}                  # Interactive profile picker\n" >&2
+  printf "    ${CYAN}awsp use my-profile${RESET}       # Set profile directly\n" >&2
+  printf "    ${CYAN}awsp status${RESET}               # Check what's active\n" >&2
+  printf "    ${CYAN}awsenv${RESET}                    # Load credentials into shell\n\n" >&2
+  printf "  ${BOLD}INSTALL${RESET}\n" >&2
+  printf "    curl -sL <url> -o ~/.aws/awsp && chmod +x ~/.aws/awsp && ~/.aws/awsp install\n\n" >&2
 }
 
 # --- Main dispatch ---
