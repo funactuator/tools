@@ -18,17 +18,19 @@ Restart your terminal (or `source ~/.zshrc`) after install.
 ## Usage
 
 ```
-iaws <command>
+iaws <command> [args]
 
   list    | ls        List all profiles (active one highlighted)
   use     | set       Switch active profile (interactive picker or pass name)
   status  | st        Show current profile, account, role & SSO state (default)
-  login               Force SSO login for active profile
-  load                Load credentials into current shell session
-  env                 Print credential export statements
+  login   [profile]   Force SSO login (active profile or specified)
+  load    [profile]   Load credentials into current shell session
+  env     [profile]   Print credential export statements
+  whoami              Show current STS caller identity
   upgrade | update    Upgrade iaws to latest version from GitHub
   uninstall | remove  Remove iaws and clean up shell config
-  install             Set up PATH + shell function in shell config
+  install             Set up PATH + shell function + completions
+  completions         Output shell completion script (sourced automatically)
   help                Show usage
 ```
 
@@ -39,8 +41,11 @@ iaws use                   # Interactive profile picker (fzf or numbered menu)
 iaws use irame-app-dev     # Set profile directly
 iaws status                # See what profile is active and if SSO is valid
 iaws list                  # See all profiles with account & role info
-iaws login                 # Trigger SSO login
-iaws load                  # Load credentials into current shell session
+iaws login                 # Trigger SSO login for active profile
+iaws login irame-app-dev   # Trigger SSO login for specific profile
+iaws load                  # Load credentials for active profile
+iaws load irame-app-dev    # Load credentials for specific profile (switches active too)
+iaws whoami                # Verify your current AWS identity
 iaws upgrade               # Upgrade to latest version
 iaws uninstall             # Remove iaws completely
 ```
@@ -53,6 +58,7 @@ iaws uninstall             # Remove iaws completely
 - Auto-triggers `aws sso login` if your session has expired
 - Uses `fzf` for interactive selection if available, falls back to a numbered menu
 - `iaws load` works via a shell function installed in your rc file — this is how it can export credentials into your current shell session
+- Tab completions for commands and profile names are installed automatically (zsh)
 
 ## Upgrade
 
